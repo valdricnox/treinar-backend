@@ -1,5 +1,0 @@
-[phases.install]
-cmds = ["npm install --production"]
-
-[start]
-cmd = "node src/models/db.js && node src/models/seed.js; node src/server.js"
