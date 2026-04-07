@@ -10,7 +10,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
     if (!email || !senha)
-      return res.status(400).json({ error: 'E-mail e senha são obrigatórios' });
+      return res.status(400).json({ error: 'E-mail e senha sao obrigatorios' });
 
     const { rows } = await query(
       'SELECT * FROM users WHERE email=$1',
@@ -18,31 +18,31 @@ router.post('/login', async (req, res) => {
     );
     const user = rows[0];
     if (!user)
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ error: 'Credenciais invalidas' });
 
     const valid = await bcrypt.compare(senha, user.password_hash);
     if (!valid)
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ error: 'Credenciais invalidas' });
 
     const payload = {
       id:    user.id,
       name:  user.name,
       email: user.email,
       role:  user.role,
-      obra:  user.obra_id,
+      obra:  user.obra,
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    // Registra sessão
+    // Registra sessao (token + token_hash)
     await query(
-      'INSERT INTO sessions (user_id, token_hash, expires_at) VALUES ($1,$2,NOW()+INTERVAL\'7 days\')',
-      [user.id, token.slice(-32)]
+      'INSERT INTO sessions (user_id, token, token_hash, expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL\'7 days\')',
+      [user.id, token, token.slice(-32)]
     );
 
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, obra: user.obra },
     });
   } catch (err) {
     console.error(err);
@@ -66,8 +66,8 @@ router.post('/refresh', auth, async (req, res) => {
     const payload = { id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
     await query(
-      'UPDATE sessions SET token_hash=$1, expires_at=NOW()+INTERVAL\'7 days\' WHERE user_id=$2',
-      [token.slice(-32), req.user.id]
+      'UPDATE sessions SET token=$1, token_hash=$2, expires_at=NOW()+INTERVAL\'7 days\' WHERE user_id=$3',
+      [token, token.slice(-32), req.user.id]
     );
     res.json({ token });
   } catch (err) {
