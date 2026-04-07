@@ -3,19 +3,18 @@ process.on('uncaughtException', (err) => {
   console.error(err.stack);
   process.exit(1);
 });
-
 process.on('unhandledRejection', (reason) => {
   console.error('PROMISE REJEITADA:', reason);
   process.exit(1);
 });
+
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const { createTables } = require('./models/db');
-const bcrypt = require('bcryptjs');
-const { query } = require('./models/db');
+const cors    = require('cors');
+const helmet  = require('helmet');
+const morgan  = require('morgan');
+const bcrypt  = require('bcryptjs');
+const { createTables, query, pool } = require('./models/db');
 
 const app = express();
 app.use(helmet());
@@ -40,16 +39,22 @@ const PORT = process.env.PORT || 8000;
 async function start() {
   try {
     await createTables();
-    
+
+    // Adiciona coluna token_hash se nao existir (migracao)
+    await pool.query('ALTER TABLE sessions ADD COLUMN IF NOT EXISTS token_hash VARCHAR(32)');
+    console.log('Migracao sessions OK');
+
     // Seed inicial
     const { rows } = await query('SELECT COUNT(*) FROM users');
     if (parseInt(rows[0].count) === 0) {
       const hash = await bcrypt.hash('treinar123', 10);
-      await query(`INSERT INTO users (name,email,password_hash,role) VALUES
-        ('Armindo','armindo@treinar.eng.br',$1,'inspetor'),
-        ('Gestor','gestor@treinar.eng.br',$1,'gestor'),
-        ('Admin','admin@treinar.eng.br',$1,'admin')
-        ON CONFLICT DO NOTHING`, [hash]);
+      await query(`
+        INSERT INTO users (name, email, password_hash, role) VALUES
+          ('Armindo',  'armindo@treinar.eng.br', $1, 'inspetor'),
+          ('Gestor',   'gestor@treinar.eng.br',  $1, 'gestor'),
+          ('Admin',    'admin@treinar.eng.br',    $1, 'admin')
+        ON CONFLICT DO NOTHING
+      `, [hash]);
       console.log('Usuarios criados');
     }
 
