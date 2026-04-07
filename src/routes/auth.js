@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'E-mail e senha são obrigatórios' });
 
     const { rows } = await query(
-      'SELECT * FROM users WHERE email=$1 AND active=true',
+      'SELECT * FROM users WHERE email=$1',
       [email.toLowerCase().trim()]
     );
     const user = rows[0];
