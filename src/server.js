@@ -35,7 +35,7 @@ app.get('/health', (req, res) => res.json({ status: 'OK' }));
 app.use((req, res) => res.status(404).json({ error: 'Nao encontrado' }));
 app.use((err, req, res, next) => res.status(500).json({ error: err.message }));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 async function start() {
   try {
